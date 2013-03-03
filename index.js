@@ -58,7 +58,7 @@ function Game(opts) {
   this.height = typeof window === "undefined" ? 1 : window.innerHeight
   this.width = typeof window === "undefined" ? 1 : window.innerWidth
   this.scene = new THREE.Scene()
-  this.view = opts.view || new voxelView(THREE, { width: this.width, height: this.height })
+  this.view = opts.view || new voxelView(THREE, opts)
   this.view.bindToScene(this.scene)
   this.camera = this.view.getCamera()
   if (!opts.lightsDisabled) this.addLights(this.scene)
