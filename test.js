@@ -30,9 +30,11 @@ test('create, destroy', function (t) {
 })
 
 gameTest(function addItem(game, t) {
+  t.plan(2)
   var item = { tick: function(){} }
-  game.addItem(item)
+  var newItem = game.addItem(item)
   t.equal(game.items.length, 1)
+  t.equal(newItem, game.items[game.items.length - 1])
 })
 
 gameTest(function removeItem(game, t) {
@@ -51,6 +53,16 @@ gameTest(function setBlock(game, t) {
   t.equal(game.getBlock([50, 50, 50]), 1)
 })
 
+gameTest(function setBlockWithMaterialName(game, t) {
+  game.materials.materials = [
+    { name: 'grass' },
+    { name: 'brick' },
+    { name: 'dirt' },
+  ]
+  game.setBlock([50, 50, 50], 'brick')
+  t.equal(game.getBlock([50, 50, 50]), 2)
+})
+
 gameTest(function blocksCreation(game, t) {
   var pos = [50, 50, 50]
   var inTheWay = { mesh: dummyItem(game.THREE), size: 5, blocksCreation: true }
@@ -65,6 +77,13 @@ gameTest(function createBlock(game, t) {
   inTheWay.mesh.position.copy(pos)
   game.addItem(inTheWay)
   t.equal(game.createBlock(pos), true)
+})
+
+gameTest(function blocks(game, t) {
+  var pos = [6,6,6]
+  game.setBlock(pos, 1)
+  var blocks = game.blocks([5,5,5], [7,7,7]).voxels
+  t.equal(!!blocks[7], true)
 })
 
 gameTest(function raycastVoxels(game, t) {

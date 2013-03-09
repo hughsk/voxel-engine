@@ -38,7 +38,7 @@ function Game(opts) {
   this.THREE = THREE
   this.vector = vector
   this.glMatrix = glMatrix
-
+  this.arrayType = opts.arrayType || Uint8Array
   this.cubeSize = 1 // backwards compat
   this.chunkSize = opts.chunkSize || 32
   
@@ -151,6 +151,7 @@ Game.prototype.addItem = function(item) {
   
   this.items.push(item)
   if (item.mesh) this.scene.add(item.mesh)
+  return this.items[this.items.length - 1]
 }
 
 Game.prototype.removeItem = function(item) {
@@ -198,6 +199,7 @@ Game.prototype.canCreateBlock = function(pos) {
 }
 
 Game.prototype.createBlock = function(pos, val) {
+  if (typeof val === 'string') val = this.materials.find(val) + 1
   if (pos.chunkMatrix) return this.chunkGroups.createBlock(pos, val)
   if (!this.canCreateBlock(pos)) return false
   this.setBlock(pos, val)
@@ -205,6 +207,7 @@ Game.prototype.createBlock = function(pos, val) {
 }
 
 Game.prototype.setBlock = function(pos, val) {
+  if (typeof val === 'string') val = this.materials.find(val) + 1
   if (pos.chunkMatrix) return this.chunkGroups.setBlock(pos, val)
   var old = this.voxels.voxelAtPosition(pos, val)
   var c = this.voxels.chunkAtPosition(pos)
@@ -216,6 +219,29 @@ Game.prototype.getBlock = function(pos) {
   pos = this.parseVectorArguments(arguments)
   if (pos.chunkMatrix) return this.chunkGroups.getBlock(pos)
   return this.voxels.voxelAtPosition(pos)
+}
+
+Game.prototype.blockPosition = function(pos) {
+  pos = this.parseVectorArguments(arguments)
+  if (pos.chunkMatrix) return this.chunkGroups.blockPosition(pos)
+  var ox = Math.floor(pos[0])
+  var oy = Math.floor(pos[1])
+  var oz = Math.floor(pos[2])
+  return [ox, oy, oz]
+}
+
+Game.prototype.blocks = function(low, high, iterator) {
+  var l = low, h = high
+  var d = [ h[0]-l[0], h[1]-l[1], h[2]-l[2] ]
+  if (!iterator) var voxels = new this.arrayType(d[0]*d[1]*d[2])
+  var i = 0
+  for(var z=l[2]; z<h[2]; ++z)
+  for(var y=l[1]; y<h[1]; ++y)
+  for(var x=l[0]; x<h[0]; ++x, ++i) {
+    if (iterator) iterator(x, y, z, i)
+    else voxels[i] = this.voxels.voxelAtPosition([x, y, z])
+  }
+  if (!iterator) return {voxels: voxels, dims: d}
 }
 
 // backwards compat
@@ -230,6 +256,7 @@ Game.prototype.appendTo = function (element) {
 // # Defaults/options parsing
 
 Game.prototype.gravity = [0, -0.0000036, 0]
+Game.prototype.friction = 0.4
 
 Game.prototype.defaultButtons = {
   'W': 'forward'
@@ -239,6 +266,7 @@ Game.prototype.defaultButtons = {
 , '<mouse 1>': 'fire'
 , '<mouse 2>': 'firealt'
 , '<space>': 'jump'
+, '<shift>': 'crouch'
 , '<control>': 'alt'
 }
 
@@ -286,10 +314,19 @@ Game.prototype.potentialCollisionSet = function() {
   return [{ collide: this.collideTerrain.bind(this) }]
 }
 
+/**
+ * Get the position of the player under control.
+ * If there is no player under control, return
+ * current position of the game's camera.
+ *
+ * @return {Array} an [x, y, z] tuple
+ */
+
 Game.prototype.playerPosition = function() {
   var target = this.controls.target()
-  if (!target) return false
-  var position = target.avatar.position
+  var position = target
+    ? target.avatar.position
+    : this.camera.localToWorld(this.camera.position.clone())
   return [position.x, position.y, position.z]
 }
 
@@ -304,6 +341,7 @@ Game.prototype.playerAABB = function(position) {
 }
 
 Game.prototype.collideTerrain = function(other, bbox, vec, resting) {
+  var self = this
   var axes = ['x', 'y', 'z']
   var vec3 = [vec.x, vec.y, vec.z]
   this.collideVoxels(bbox, vec3, function hit(axis, tile, coords, dir, edge) {
@@ -312,7 +350,7 @@ Game.prototype.collideTerrain = function(other, bbox, vec, resting) {
     vec3[axis] = vec[axes[axis]] = edge
     other.acceleration[axes[axis]] = 0
     resting[axes[axis]] = dir
-    other.friction[axes[(axis + 1) % 3]] = other.friction[axes[(axis + 2) % 3]] = axis === 1 ? 0.5 : 1
+    other.friction[axes[(axis + 1) % 3]] = other.friction[axes[(axis + 2) % 3]] = axis === 1 ? self.friction  : 1
     return true
   })
 }
