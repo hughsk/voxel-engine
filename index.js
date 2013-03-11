@@ -55,10 +55,10 @@ function Game(opts) {
   this.items = []
   this.voxels = voxel(this)
   this.chunkGroups = voxelChunks(this)
-  this.height = typeof window === "undefined" ? 1 : window.innerHeight
-  this.width = typeof window === "undefined" ? 1 : window.innerWidth
+  this.height = opts.height = typeof window === "undefined" ? 1 : window.innerHeight
+  this.width = opts.width = typeof window === "undefined" ? 1 : window.innerWidth
   this.scene = new THREE.Scene()
-  this.view = opts.view || new voxelView(THREE, { width: this.width, height: this.height })
+  this.view = opts.view || new voxelView(THREE, opts)
   this.view.bindToScene(this.scene)
   this.camera = this.view.getCamera()
   if (!opts.lightsDisabled) this.addLights(this.scene)
